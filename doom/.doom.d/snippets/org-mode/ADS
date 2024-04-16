@@ -1,0 +1,18 @@
+# -*- mode: snippet -*-
+# name:ADS
+# key:ADS
+# --
+* Title:
+* Goal
+* Categorization
+* Strategy Abstract
+* Technical Context
+* Blind Spots & Assumptions
+* False Positives
+* Logs and Events
+* Detections & Threat Hunts
+* Validation
+* Alert Priority
+* Response
+* Additional Resources
+* Notes
