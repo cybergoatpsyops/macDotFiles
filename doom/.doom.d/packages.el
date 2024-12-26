@@ -48,3 +48,6 @@
 ;; (unpin! pinned-package another-pinned-package)
 ;; ...Or *all* packages (NOT RECOMMENDED; will likely break things)
 ;; (unpin! t)
+(package! evil-terminal-cursor-changer)
+(package! org-modern)
+(package! emacsql :pin "491105a")
