@@ -35,6 +35,7 @@ if command -v tmux &> /dev/null && [ -n "$PS1" ] && [[ ! "$TERM" =~ screen ]] &&
     # Create sessions with names
     create_session "main"
     create_session "secondary"
+    tmux new-session -d -s "emacs" "emacs -nw"
     tmux new-session -d -s "nvim" "nvim"
 
     # Reorder sessions as needed
@@ -56,7 +57,10 @@ export BASH_IT="/Users/lbastidas/.bash_it"
 # Lock and Load a custom theme file.
 # Leave empty to disable theming.
 # location /.bash_it/themes/
-export BASH_IT_THEME='powerline-multiline'
+export BASH_IT_THEME='atomic'
+THEME_SHOW_PYTHON='true'
+THEME_SHOW_CLOCK='true'
+THEME_SHOW_BATTERY='true'
 
 # Some themes can show whether `sudo` has a current token or not.
 # Set `$THEME_CHECK_SUDO` to `true` to check every prompt:
