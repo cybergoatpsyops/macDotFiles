@@ -283,12 +283,12 @@ require("lazy").setup({
 	},
 
 	{
-		'tpope/vim-fugitive',
-		cmd = {'G', 'Git'},
+		"tpope/vim-fugitive",
+		cmd = { "G", "Git" },
 		keys = {
-		  { '<leader>gs', '<cmd>Git<cr>', desc = 'Git status' },
-		  { '<leader>gc', '<cmd>Git commit<cr>', desc = 'Git commit' },
-		  { '<leader>gp', '<cmd>Git push<cr>', desc = 'Git push' },
+			{ "<leader>gs", "<cmd>Git<cr>", desc = "Git status" },
+			{ "<leader>gc", "<cmd>Git commit<cr>", desc = "Git commit" },
+			{ "<leader>gp", "<cmd>Git push<cr>", desc = "Git push" },
 		},
 	},
 
@@ -1156,3 +1156,174 @@ vim.api.nvim_create_autocmd("FileType", {
 
 -- Set up keybinding for switching to previous buffer
 vim.keymap.set("n", "<leader>`", "<C-^>", { noremap = true, silent = true, desc = "Switch to previous buffer" })
+
+-- external viewwer for csv
+vim.g.netrw_browsex_viewer = "open"
+
+-- Store argument history globally
+_G.python_run_state = {
+	args_history = {}, -- Store history of arguments
+	max_history = 10, -- Maximum number of arguments to remember
+}
+
+-- Function to add arguments to history
+local function add_to_history(args)
+	if args and args ~= "" then
+		-- Don't add if it's the same as the most recent entry
+		if #_G.python_run_state.args_history > 0 and _G.python_run_state.args_history[1] == args then
+			return
+		end
+
+		-- Add to start of history
+		table.insert(_G.python_run_state.args_history, 1, args)
+
+		-- Keep only up to max_history entries
+		while #_G.python_run_state.args_history > _G.python_run_state.max_history do
+			table.remove(_G.python_run_state.args_history)
+		end
+	end
+end
+
+-- Python execution with optional arguments
+vim.keymap.set("n", "<leader>pr", function()
+	-- Save current file
+	vim.cmd("w")
+	-- Store current buffer number
+	local current_buf = vim.api.nvim_get_current_buf()
+	-- Get the directory of the current file
+	local file_dir = vim.fn.expand("%:p:h")
+
+	-- Show recent arguments in prompt if they exist
+	local prompt = "Arguments (optional, press Enter to skip"
+	if #_G.python_run_state.args_history > 0 then
+		prompt = prompt .. ", Ctrl-p for history): "
+	else
+		prompt = prompt .. "): "
+	end
+
+	-- Get arguments with history support
+	local args = vim.fn.input({
+		prompt = prompt,
+		cancelreturn = vim.NIL,
+		history = "python_args",
+	})
+
+	-- Store in history if not empty
+	if args and args ~= "" then
+		add_to_history(args)
+		vim.fn.histadd("python_args", args)
+	end
+
+	-- Find the window with the Python file
+	local python_window = nil
+	for _, win in ipairs(vim.api.nvim_list_wins()) do
+		if vim.api.nvim_win_get_buf(win) == current_buf then
+			python_window = win
+			break
+		end
+	end
+
+	if python_window then
+		-- Switch to the Python file window
+		vim.api.nvim_set_current_win(python_window)
+		-- Split this window and run Python with arguments if provided
+		if args ~= "" then
+			vim.cmd(
+				string.format("belowright vsplit | lcd %s | terminal python3 %s %s", file_dir, "#" .. current_buf, args)
+			)
+		else
+			vim.cmd(string.format("belowright vsplit | lcd %s | terminal python3 %s", file_dir, "#" .. current_buf))
+		end
+		-- Set both splits to equal width
+		vim.cmd("wincmd =")
+		-- Enter terminal mode
+		vim.cmd("startinsert")
+	end
+end, { silent = true, desc = "[P]ython [R]un file (with optional arguments)" })
+
+-- Run selected Python code with optional arguments
+vim.keymap.set("v", "<leader>pr", function()
+	-- Yank selected text
+	vim.cmd("y")
+	-- Get the directory of the current file
+	local file_dir = vim.fn.expand("%:p:h")
+
+	-- Show recent arguments in prompt if they exist
+	local prompt = "Arguments (optional, press Enter to skip"
+	if #_G.python_run_state.args_history > 0 then
+		prompt = prompt .. ", Ctrl-p for history): "
+	else
+		prompt = prompt .. "): "
+	end
+
+	-- Get arguments with history support
+	local args = vim.fn.input({
+		prompt = prompt,
+		cancelreturn = vim.NIL,
+		history = "python_args",
+	})
+
+	-- Store in history if not empty
+	if args and args ~= "" then
+		add_to_history(args)
+		vim.fn.histadd("python_args", args)
+	end
+
+	-- Find the window with the Python file
+	local python_window = nil
+	for _, win in ipairs(vim.api.nvim_list_wins()) do
+		if vim.bo[vim.api.nvim_win_get_buf(win)].filetype ~= "netrw" then
+			python_window = win
+			break
+		end
+	end
+
+	if python_window then
+		-- Switch to the Python file window
+		vim.api.nvim_set_current_win(python_window)
+		-- Split and run selected Python code with arguments if provided
+		if args ~= "" then
+			vim.cmd(
+				string.format(
+					'belowright vsplit | lcd %s | terminal python3 -c "%s" %s',
+					file_dir,
+					vim.fn.getreg('"'):gsub('"', '\\"'),
+					args
+				)
+			)
+		else
+			vim.cmd(
+				string.format(
+					'belowright vsplit | lcd %s | terminal python3 -c "%s"',
+					file_dir,
+					vim.fn.getreg('"'):gsub('"', '\\"')
+				)
+			)
+		end
+		-- Set both splits to equal width
+		vim.cmd("wincmd =")
+		-- Enter terminal mode
+		vim.cmd("startinsert")
+	end
+end, { silent = true, desc = "[P]ython [R]un selected code (with optional arguments)" })
+
+-- Keep your existing netrw and terminal close configurations below...
+-- Make sure netrw keeps its size
+vim.api.nvim_create_autocmd("BufEnter", {
+	pattern = "*",
+	callback = function()
+		if vim.bo.filetype == "netrw" then
+			vim.cmd("vertical resize 25")
+		end
+	end,
+})
+
+-- Close terminal buffer while maintaining splits
+vim.keymap.set("n", "<leader>pc", function()
+	-- Store netrw width
+	local netrw_width = 25
+	-- Close terminal buffer
+	vim.cmd("bdelete!")
+	-- Restore netrw width
+	vim.cmd("vertical resize " .. netrw_width)
+end, { silent = true, desc = "[P]ython [C]lose terminal" })
